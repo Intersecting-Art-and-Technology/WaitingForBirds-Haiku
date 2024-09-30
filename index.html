@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+			overflow: hidden;
+		}
+	</style>
+</head>
+<body>
+	<script type="importmap">
+	{
+		"imports": {
+			"three": "https://unpkg.com/three@0.157.0/build/three.module.js",
+			"three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/",
+			"@lumaai/luma-web": "https://unpkg.com/@lumaai/luma-web@0.2.0/dist/library/luma-web.module.js"
+		}
+	}
+	</script>
+	<script type="module">
+		import { WebGLRenderer, PerspectiveCamera, Scene, Color, DoubleSide, Mesh, MeshStandardMaterial, PlaneGeometry, Texture, Vector3 } from 'three';
+		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+		import { LumaSplatsThree } from '@lumaai/luma-web';
+
+		// Create renderer
+		let renderer = new WebGLRenderer({ antialias: false });
+		renderer.domElement.style.position = 'absolute';
+		renderer.domElement.style.width = '100%';
+		renderer.domElement.style.height = '100%';
+
+		// Add canvas to DOM
+		document.body.appendChild(renderer.domElement);
+
+		// Create camera and scene
+		let camera = new PerspectiveCamera(75, 1, 0.1, 1000);
+		camera.position.z = 2;
+
+		let controls = new OrbitControls(camera, renderer.domElement);
+		controls.enableDamping = true;
+
+		let scene = new Scene();
+		let textPlane;
+
+		// Function to create the custom text
+		function createText() {
+			const canvas = document.createElement('canvas');
+			const context = canvas.getContext('2d');
+			canvas.width = 1024;
+			canvas.height = 512;
+
+			context.fillStyle = 'rgba(255, 255, 255, 0)';
+			context.fillRect(0, 0, canvas.width, canvas.height);
+
+			context.fillStyle = 'white';
+			context.font = '80px sans-serif';  // Reduced font size
+			context.textAlign = 'center';
+			context.textBaseline = 'middle';
+
+			const lines = [
+				"Waiting For Birds",
+				"",
+				"Wild squalls curl and",
+				"Playa’s frozen winter crust",
+				"Hides the wetland flyway"
+			];
+
+			const lineHeight = 100; // Adjusted line height
+			lines.forEach((line, index) => {
+				context.fillText(line, canvas.width / 2, canvas.height / 2 - 200 + index * lineHeight);
+			});
+
+			const texture = new Texture(canvas);
+			texture.needsUpdate = true;
+
+			const geometry = new PlaneGeometry(5, 2.5);
+			const material = new MeshStandardMaterial({
+				map: texture,
+				transparent: false,
+				alphaTest: 0.5,
+				side: DoubleSide,
+				premultipliedAlpha: true,
+				emissive: 'white',
+				emissiveIntensity: 2,
+			});
+			textPlane = new Mesh(geometry, material);
+
+			textPlane.position.set(0.8,.4, 0);
+			//textPlane.rotation.y = Math.PI / 2;
+			//textPlane.scale.setScalar(0.6);
+
+			return textPlane;
+		}
+
+		// Initialize the demo scene
+		function DemoHelloWorld() {
+			scene.background = new Color('white');
+
+			let splats = new LumaSplatsThree({
+				source: 'https://lumalabs.ai/capture/7cf1721c-5b19-4758-a2c1-c520a4fedcd7',
+				enableThreeShaderIntegration: false,
+				particleRevealEnabled: true,
+			});
+
+			scene.add(splats);
+
+			splats.onInitialCameraTransform = transform => {
+				transform.decompose(camera.position, camera.quaternion, new Vector3());
+			};
+
+			scene.add(createText());
+
+			return {
+				dispose: () => {
+					splats.dispose();
+				}
+			};
+		}
+
+		// Execute the demo
+		DemoHelloWorld();
+
+		// Frame loop
+		function frameLoop() {
+			let canvas = renderer.domElement;
+			let width = canvas.clientWidth;
+			let height = canvas.clientHeight;
+
+			if (canvas.width !== width || canvas.height !== height) {
+				camera.aspect = width / height;
+				camera.updateProjectionMatrix();
+				renderer.setSize(width, height, false);
+			}
+            if (textPlane) {
+                textPlane.lookAt(camera.position);
+            }
+			controls.update();
+			renderer.render(scene, camera);
+		}
+
+		renderer.setAnimationLoop(frameLoop);
+	</script>
+</body>
+</html>
